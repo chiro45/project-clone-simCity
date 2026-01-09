@@ -6,5 +6,5 @@ const game = new CreateGame();
 game.startGame();
 
 setInterval(() => {
-  game.update();
+	game.update();
 }, 1000);
