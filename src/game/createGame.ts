@@ -12,7 +12,7 @@ export class CreateGame {
   constructor() {
     // Crear y iniciar la escena
     this.scene = new CreateScene();
-    this.city = new City(8);
+    this.city = new City(16);
 
     this.scene.initializeCity(this.city);
 
