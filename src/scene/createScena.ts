@@ -3,8 +3,9 @@ import {
   Color,
   Mesh,
   MeshBasicMaterial,
-  MeshLambertMaterial,
+  Raycaster,
   Scene,
+  Vector2,
   WebGLRenderer,
 } from "three";
 import {
@@ -16,6 +17,7 @@ import {
   type CreateCamera as ICreateCamera,
 } from "../camera/createCamera";
 import type { City } from "../city/city";
+import { Assets, type Assets as IAssets } from "../assets/assets";
 
 /**
  * Clase que gestiona la escena principal del juego.
@@ -28,8 +30,12 @@ export class CreateScene {
   private mesh: Mesh;
   private camera: ICreateCamera;
   private cameraController: ICameraController;
+  private assets: IAssets;
+  private raycaster: Raycaster;
+  private mouseVector: Vector2;
+  private selectedObject: Mesh | undefined;
   private terrain: Mesh[][];
-  private buildings: Mesh[][];
+  private buildings: (Mesh | undefined)[][];
 
   constructor() {
     this.gameWindow = document.getElementById(
@@ -37,12 +43,12 @@ export class CreateScene {
     ) as HTMLCanvasElement;
     this.terrain = [];
     this.buildings = [];
+    this.assets = new Assets();
+    this.raycaster = new Raycaster();
+    this.mouseVector = new Vector2();
+    this.selectedObject = undefined;
     // Crear cámara
     this.camera = new CreateCamera(this.gameWindow);
-
-    // Crear controlador de cámara (maneja eventos del mouse)
-    this.cameraController = new CameraController(this.camera);
-
     // Crear escena
     this.scene = new Scene();
     this.scene.background = new Color(0x777777);
@@ -52,6 +58,16 @@ export class CreateScene {
       this.gameWindow.offsetWidth,
       this.gameWindow.offsetHeight
     );
+    // Crear controlador de cámara (maneja eventos del mouse)
+    this.cameraController = new CameraController(
+      this.camera,
+      this.mouseVector,
+      this.renderer,
+      this.raycaster,
+      this.scene,
+      this.selectedObject
+    );
+
     this.gameWindow.appendChild(this.renderer.domElement);
 
     // Crear un cubo de prueba
@@ -60,6 +76,7 @@ export class CreateScene {
     this.mesh = new Mesh(geometry, material);
     this.scene.add(this.mesh);
   }
+
   public initializeCity(city: City) {
     this.scene.clear();
     this.terrain = [];
@@ -67,13 +84,12 @@ export class CreateScene {
     for (let x = 0; x < city.size; x++) {
       const column: Mesh[] = [];
       for (let y = 0; y < city.size; y++) {
-        //grass geometry
-        const geometry = new BoxGeometry(1, 1, 1);
-        const material = new MeshLambertMaterial({ color: 0x00ff00 });
-        const mesh = new Mesh(geometry, material);
-        mesh.position.set(x, -0.5, y);
-        this.scene.add(mesh);
-        column.push(mesh);
+        const terrainId = city.data[x][y].terrainId;
+        const mesh = this.assets.createAssetInstance(terrainId, x, y);
+        if (mesh) {
+          this.scene.add(mesh);
+          column.push(mesh);
+        }
       }
       this.terrain.push(column);
       this.buildings.push([...Array(city.size)]);
@@ -81,21 +97,28 @@ export class CreateScene {
   }
 
   public update(city: City) {
+    
     for (let x = 0; x < city.size; x++) {
       for (let y = 0; y < city.size; y++) {
-        //building geometry
-        const tile = city.data[x][y];
-        if (tile?.building && tile.building.startsWith("building")) {
-          const height = Number(tile.building.slice(-1));
-          const buildingGeometry = new BoxGeometry(1, height, 1);
-          const buildingMaterial = new MeshLambertMaterial({ color: 0x777777 });
-          const buildingMesh = new Mesh(buildingGeometry, buildingMaterial);
-          buildingMesh.position.set(x, height / 2, y);
-          if (this.buildings[x][y]) {
-            this.scene.remove(this.buildings[x][y]);
-          }
-          this.scene.add(buildingMesh);
-          this.buildings[x][y] = buildingMesh;
+        const currentBuildingId = this.buildings[x][y]?.userData.id;
+        const newBuildingId = city.data[x][y].buildingId;
+
+        //if the player removes a building remove from the scene
+        if (!newBuildingId && currentBuildingId) {
+          this.scene.remove(this.buildings[x][y]!);
+          this.buildings[x][y] = undefined;
+        }
+
+        if (newBuildingId !== currentBuildingId) {
+          this.scene.remove(this.buildings[x][y]!);
+
+          this.buildings[x][y] = this.assets.createAssetInstance(
+            newBuildingId,
+            x,
+            y
+          );
+
+          this.scene.add(this.buildings[x][y]!);
         }
       }
     }

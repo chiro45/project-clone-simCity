@@ -23,7 +23,7 @@ export class CreateCamera {
   // Sensibilidades de los controles
   private readonly ROTATION_SENSIVITY: number = 0.5;
   private readonly ZOOM_SENSIVITY: number = 0.02;
-  private readonly PAN_SENSIVITY: number = -0.01;
+  private readonly PAN_SENSIVITY: number = 0.05;
 
   // Constantes
   private readonly Y_AXIS = new Vector3(0, 1, 0);
