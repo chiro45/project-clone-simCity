@@ -1,6 +1,10 @@
-import { CreateScene } from "./scene/createScena";
+import { CreateGame } from "./game/createGame";
 import "./style.css";
 
-// Crear y iniciar la escena
-const scene = new CreateScene();
-scene.start();
+const game = new CreateGame();
+
+game.startGame();
+
+setInterval(() => {
+  game.update();
+}, 1000);
